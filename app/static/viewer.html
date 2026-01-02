@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tournament Viewer</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f0f23 0%, #1a1a3e 100%);
+            min-height: 100vh;
+            color: #fff;
+        }
+        
+        .container { max-width: 1600px; margin: 0 auto; padding: 20px; }
+        
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 25px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 12px;
+            margin-bottom: 20px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .logo h1 { font-size: 1.5rem; }
+        .logo span { font-size: 2rem; }
+        
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+        }
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        .connected .status-dot { background: #27ae60; }
+        .disconnected .status-dot { background: #e74c3c; }
+        .connected { background: rgba(39, 174, 96, 0.2); }
+        .disconnected { background: rgba(231, 76, 60, 0.2); }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            gap: 20px;
+        }
+        
+        @media (max-width: 1200px) {
+            .main-grid { grid-template-columns: 1fr; }
+        }
+        
+        .card {
+            background: rgba(255,255,255,0.05);
+            border-radius: 12px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .card h2 {
+            font-size: 1.1rem;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        /* Tournament Info Bar */
+        .info-bar {
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 12px;
+        }
+        
+        .info-item {
+            text-align: center;
+            padding: 10px 20px;
+        }
+        .info-value {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #3498db;
+        }
+        .info-label {
+            font-size: 0.8rem;
+            opacity: 0.7;
+            text-transform: uppercase;
+        }
+        
+        /* Poker Table Styles */
+        .tables-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 20px;
+        }
+        
+        .poker-table {
+            background: linear-gradient(145deg, #1e5631 0%, #0d3320 100%);
+            border-radius: 150px;
+            padding: 30px;
+            position: relative;
+            border: 8px solid #3d2914;
+            box-shadow: 
+                inset 0 0 50px rgba(0,0,0,0.3),
+                0 10px 30px rgba(0,0,0,0.5);
+            min-height: 350px;
+        }
+        
+        .table-felt {
+            border: 2px solid rgba(255,255,255,0.1);
+            border-radius: 140px;
+            height: 100%;
+            padding: 20px;
+            position: relative;
+        }
+        
+        .table-header {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        .table-header h3 {
+            font-size: 1rem;
+            opacity: 0.9;
+        }
+        .table-header .hand-info {
+            font-size: 0.85rem;
+            opacity: 0.7;
+        }
+        
+        .table-center {
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .pot-display {
+            background: rgba(0,0,0,0.3);
+            padding: 10px 25px;
+            border-radius: 20px;
+            display: inline-block;
+            margin-bottom: 15px;
+        }
+        .pot-amount {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #f1c40f;
+        }
+        .pot-label {
+            font-size: 0.75rem;
+            opacity: 0.7;
+        }
+        
+        .community-cards {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin: 15px 0;
+        }
+        
+        .card-display {
+            width: 50px;
+            height: 70px;
+            background: white;
+            border-radius: 6px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.1rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            position: relative;
+        }
+        .card-display.empty {
+            background: rgba(255,255,255,0.1);
+            border: 2px dashed rgba(255,255,255,0.3);
+        }
+        .card-display.hearts, .card-display.h { color: #e74c3c; }
+        .card-display.diamonds, .card-display.d { color: #e74c3c; }
+        .card-display.clubs, .card-display.c { color: #2c3e50; }
+        .card-display.spades, .card-display.s { color: #2c3e50; }
+        
+        .card-rank { font-size: 1.2rem; }
+        .card-suit { font-size: 1rem; }
+        
+        .round-indicator {
+            display: inline-block;
+            padding: 5px 15px;
+            background: rgba(52, 152, 219, 0.3);
+            border-radius: 15px;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        /* Player Seats */
+        .players-ring {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .player-seat {
+            background: rgba(0,0,0,0.4);
+            border-radius: 10px;
+            padding: 12px 15px;
+            min-width: 120px;
+            text-align: center;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+        .player-seat.active-turn {
+            background: rgba(46, 204, 113, 0.3);
+            box-shadow: 0 0 15px rgba(46, 204, 113, 0.5);
+            transform: scale(1.05);
+        }
+        .player-seat.folded {
+            opacity: 0.4;
+        }
+        .player-seat.all-in {
+            background: rgba(231, 76, 60, 0.3);
+        }
+        
+        .player-name {
+            font-weight: bold;
+            font-size: 0.9rem;
+            margin-bottom: 5px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .player-chips {
+            color: #f1c40f;
+            font-size: 0.85rem;
+        }
+        .player-bet {
+            font-size: 0.8rem;
+            color: #3498db;
+            margin-top: 3px;
+        }
+        .player-action {
+            font-size: 0.75rem;
+            opacity: 0.7;
+            margin-top: 3px;
+            font-style: italic;
+        }
+        
+        .player-badges {
+            display: flex;
+            justify-content: center;
+            gap: 3px;
+            margin-top: 5px;
+        }
+        .badge {
+            font-size: 0.65rem;
+            padding: 2px 6px;
+            border-radius: 8px;
+            text-transform: uppercase;
+        }
+        .badge-dealer { background: #f1c40f; color: #000; }
+        .badge-sb { background: #3498db; }
+        .badge-bb { background: #9b59b6; }
+        
+        /* Sidebar */
+        .sidebar { display: flex; flex-direction: column; gap: 20px; }
+        
+        /* Leaderboard */
+        .leaderboard-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .leaderboard-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            margin: 5px 0;
+            background: rgba(255,255,255,0.05);
+            border-radius: 8px;
+            transition: background 0.2s;
+        }
+        .leaderboard-item:hover {
+            background: rgba(255,255,255,0.1);
+        }
+        .leaderboard-position {
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+        .position-1 { background: linear-gradient(135deg, #f1c40f, #f39c12); color: #000; }
+        .position-2 { background: linear-gradient(135deg, #bdc3c7, #95a5a6); color: #000; }
+        .position-3 { background: linear-gradient(135deg, #d35400, #e67e22); color: #fff; }
+        .position-other { background: rgba(255,255,255,0.1); }
+        
+        .leaderboard-info { flex: 1; }
+        .leaderboard-name { font-weight: 500; }
+        .leaderboard-chips { 
+            color: #f1c40f; 
+            font-weight: bold;
+        }
+        
+        /* Action Feed */
+        .action-feed {
+            max-height: 250px;
+            overflow-y: auto;
+        }
+        .action-item {
+            padding: 8px 10px;
+            margin: 5px 0;
+            background: rgba(255,255,255,0.03);
+            border-radius: 6px;
+            font-size: 0.85rem;
+            border-left: 3px solid #3498db;
+        }
+        .action-item.fold { border-left-color: #e74c3c; }
+        .action-item.bet, .action-item.raise { border-left-color: #f1c40f; }
+        .action-item.check, .action-item.call { border-left-color: #27ae60; }
+        .action-item.win { border-left-color: #9b59b6; background: rgba(155, 89, 182, 0.1); }
+        
+        .action-time {
+            font-size: 0.7rem;
+            opacity: 0.5;
+        }
+        
+        /* Eliminations */
+        .elimination-list {
+            max-height: 150px;
+            overflow-y: auto;
+        }
+        .elimination-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px;
+            margin: 3px 0;
+            background: rgba(231, 76, 60, 0.1);
+            border-radius: 6px;
+            font-size: 0.85rem;
+        }
+        
+        /* Winner Overlay */
+        .winner-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.9);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        .winner-overlay.show { display: flex; }
+        
+        .winner-card {
+            text-align: center;
+            padding: 50px;
+            background: linear-gradient(135deg, #1a1a3e, #2c3e50);
+            border-radius: 20px;
+            border: 3px solid #f1c40f;
+            animation: winnerPop 0.5s ease;
+        }
+        
+        @keyframes winnerPop {
+            0% { transform: scale(0.5); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        
+        .winner-trophy { font-size: 5rem; margin-bottom: 20px; }
+        .winner-title { font-size: 1.5rem; opacity: 0.7; margin-bottom: 10px; }
+        .winner-name { font-size: 3rem; font-weight: bold; color: #f1c40f; }
+        .winner-chips { font-size: 1.2rem; margin-top: 15px; opacity: 0.8; }
+        
+        .close-winner {
+            margin-top: 30px;
+            padding: 10px 30px;
+            background: #3498db;
+            border: none;
+            border-radius: 25px;
+            color: white;
+            font-size: 1rem;
+            cursor: pointer;
+        }
+        
+        /* Waiting State */
+        .waiting-message {
+            text-align: center;
+            padding: 60px 20px;
+            opacity: 0.7;
+        }
+        .waiting-message .icon { font-size: 4rem; margin-bottom: 20px; }
+        
+        /* Scrollbar Styles */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.3); }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .tables-container { grid-template-columns: 1fr; }
+            .poker-table { border-radius: 30px; padding: 15px; }
+            .table-felt { border-radius: 25px; }
+            .info-bar { flex-direction: column; }
+            .card-display { width: 40px; height: 56px; font-size: 0.9rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo">
+                <span>🃏</span>
+                <h1>Poker Bot Tournament</h1>
+            </div>
+            <div id="connectionStatus" class="connection-status disconnected">
+                <div class="status-dot"></div>
+                <span id="connectionText">Connecting...</span>
+            </div>
+        </header>
+
+        <div class="info-bar">
+            <div class="info-item">
+                <div class="info-value" id="tournamentStatus">--</div>
+                <div class="info-label">Status</div>
+            </div>
+            <div class="info-item">
+                <div class="info-value" id="playersRemaining">0</div>
+                <div class="info-label">Players</div>
+            </div>
+            <div class="info-item">
+                <div class="info-value" id="activeTables">0</div>
+                <div class="info-label">Tables</div>
+            </div>
+            <div class="info-item">
+                <div class="info-value" id="handsPlayed">0</div>
+                <div class="info-label">Hands</div>
+            </div>
+            <div class="info-item">
+                <div class="info-value" id="currentBlinds">10/20</div>
+                <div class="info-label">Blinds</div>
+            </div>
+        </div>
+
+        <div class="main-grid">
+            <div class="tables-section">
+                <div class="card">
+                    <h2>🎴 Live Tables</h2>
+                    <div id="tablesContainer" class="tables-container">
+                        <div class="waiting-message">
+                            <div class="icon">⏳</div>
+                            <p>Waiting for tournament to start...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar">
+                <div class="card">
+                    <h2>🏆 Leaderboard</h2>
+                    <div id="leaderboard" class="leaderboard-list">
+                        <p style="opacity: 0.5; text-align: center;">No players yet</p>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2>⚡ Live Actions</h2>
+                    <div id="actionFeed" class="action-feed">
+                        <div class="action-item">
+                            <span>Waiting for game actions...</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2>💀 Eliminations</h2>
+                    <div id="eliminations" class="elimination-list">
+                        <p style="opacity: 0.5; text-align: center; font-size: 0.85rem;">No eliminations yet</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="winnerOverlay" class="winner-overlay">
+        <div class="winner-card">
+            <div class="winner-trophy">🏆</div>
+            <div class="winner-title">Tournament Champion</div>
+            <div id="winnerName" class="winner-name">Player Name</div>
+            <div id="winnerChips" class="winner-chips">Final Chips: 0</div>
+            <button class="close-winner" onclick="closeWinnerOverlay()">Continue Watching</button>
+        </div>
+    </div>
+
+    <script>
+        let ws = null;
+        let reconnectAttempts = 0;
+        const maxReconnectAttempts = 10;
+
+        // Suit symbols
+        const suitSymbols = {
+            'h': '♥', 'hearts': '♥',
+            'd': '♦', 'diamonds': '♦',
+            'c': '♣', 'clubs': '♣',
+            's': '♠', 'spades': '♠'
+        };
+
+        function connectWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            ws = new WebSocket(`${protocol}//${window.location.host}/viewer/ws`);
+
+            ws.onopen = () => {
+                console.log('WebSocket connected');
+                reconnectAttempts = 0;
+                updateConnectionStatus(true);
+            };
+
+            ws.onmessage = (event) => {
+                try {
+                    const message = JSON.parse(event.data);
+                    handleMessage(message);
+                } catch (e) {
+                    console.error('Failed to parse message:', e);
+                }
+            };
+
+            ws.onclose = () => {
+                console.log('WebSocket disconnected');
+                updateConnectionStatus(false);
+                
+                if (reconnectAttempts < maxReconnectAttempts) {
+                    reconnectAttempts++;
+                    const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000);
+                    console.log(`Reconnecting in ${delay}ms...`);
+                    setTimeout(connectWebSocket, delay);
+                }
+            };
+
+            ws.onerror = (error) => {
+                console.error('WebSocket error:', error);
+            };
+
+            // Keep-alive ping
+            setInterval(() => {
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    ws.send('ping');
+                }
+            }, 30000);
+        }
+
+        function updateConnectionStatus(connected) {
+            const statusEl = document.getElementById('connectionStatus');
+            const textEl = document.getElementById('connectionText');
+            
+            if (connected) {
+                statusEl.className = 'connection-status connected';
+                textEl.textContent = 'Live';
+            } else {
+                statusEl.className = 'connection-status disconnected';
+                textEl.textContent = 'Reconnecting...';
+            }
+        }
+
+        function handleMessage(message) {
+            console.log('Received:', message.type);
+
+            switch (message.type) {
+                case 'connected':
+                    if (message.data.tournament_status) {
+                        updateTournamentInfo(message.data.tournament_status);
+                    }
+                    if (message.data.tables) {
+                        renderTables(message.data.tables);
+                    }
+                    break;
+
+                case 'game_state':
+                    updateGameState(message.data);
+                    break;
+
+                case 'tournament_complete':
+                    showWinner(message.data);
+                    break;
+
+                case 'elimination':
+                    addElimination(message.data);
+                    break;
+
+                case 'admin_message':
+                    showAdminMessage(message.data.message);
+                    break;
+            }
+        }
+
+        function updateTournamentInfo(status) {
+            document.getElementById('tournamentStatus').textContent = status.status.toUpperCase();
+            document.getElementById('playersRemaining').textContent = status.remaining_players;
+            document.getElementById('activeTables').textContent = status.active_tables;
+            document.getElementById('handsPlayed').textContent = status.hands_played;
+            document.getElementById('currentBlinds').textContent = 
+                `${status.current_blinds.small}/${status.current_blinds.big}`;
+
+            if (status.eliminations && status.eliminations.length > 0) {
+                renderEliminations(status.eliminations);
+            }
+        }
+
+        function updateGameState(gameState) {
+            // Update single table
+            const container = document.getElementById('tablesContainer');
+            const existingTable = document.getElementById(`table-${gameState.table_id}`);
+            
+            if (existingTable) {
+                existingTable.outerHTML = renderTable(gameState);
+            } else {
+                // Check if we have waiting message
+                if (container.querySelector('.waiting-message')) {
+                    container.innerHTML = '';
+                }
+                container.insertAdjacentHTML('beforeend', renderTable(gameState));
+            }
+
+            // Update leaderboard
+            updateLeaderboard(gameState);
+
+            // Add recent actions to feed
+            if (gameState.action_history && gameState.action_history.length > 0) {
+                const lastAction = gameState.action_history[gameState.action_history.length - 1];
+                addActionToFeed(lastAction);
+            }
+
+            // Update hand winners
+            if (gameState.hand_winners && gameState.hand_winners.length > 0) {
+                gameState.hand_winners.forEach(winner => {
+                    addActionToFeed({
+                        username: winner.username,
+                        action: `won ${winner.amount} chips with ${winner.hand}`,
+                        isWin: true
+                    });
+                });
+            }
+        }
+
+        function renderTables(tables) {
+            const container = document.getElementById('tablesContainer');
+            
+            if (!tables || tables.length === 0) {
+                container.innerHTML = `
+                    <div class="waiting-message">
+                        <div class="icon">⏳</div>
+                        <p>Waiting for tournament to start...</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = tables.map(renderTable).join('');
+        }
+
+        function renderTable(table) {
+            const communityCards = table.community_cards || [];
+            const players = Object.values(table.players || {});
+
+            return `
+                <div id="table-${table.table_id}" class="poker-table">
+                    <div class="table-felt">
+                        <div class="table-header">
+                            <h3>${table.table_id}</h3>
+                            <div class="hand-info">Hand #${table.hand_number || 0}</div>
+                        </div>
+                        
+                        <div class="table-center">
+                            <div class="pot-display">
+                                <div class="pot-label">POT</div>
+                                <div class="pot-amount">${table.total_pot || 0}</div>
+                            </div>
+                            
+                            <div class="community-cards">
+                                ${renderCommunityCards(communityCards)}
+                            </div>
+                            
+                            <div class="round-indicator">${table.betting_round || 'waiting'}</div>
+                        </div>
+                        
+                        <div class="players-ring">
+                            ${players.map(p => renderPlayerSeat(p, table.current_player_id)).join('')}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderCommunityCards(cards) {
+            const rendered = cards.map(card => {
+                const suit = card.suit || 's';
+                const rank = card.rank || '?';
+                const suitSymbol = suitSymbols[suit] || suit;
+                return `
+                    <div class="card-display ${suit}">
+                        <span class="card-rank">${rank}</span>
+                        <span class="card-suit">${suitSymbol}</span>
+                    </div>
+                `;
+            }).join('');
+
+            // Add empty slots
+            const emptySlots = 5 - cards.length;
+            const emptyCards = Array(emptySlots).fill(`
+                <div class="card-display empty">
+                    <span style="opacity: 0.3;">?</span>
+                </div>
+            `).join('');
+
+            return rendered + emptyCards;
+        }
+
+        function renderPlayerSeat(player, currentPlayerId) {
+            const isActive = player.player_id === currentPlayerId;
+            const isFolded = player.status === 'folded';
+            const isAllIn = player.status === 'all_in';
+            
+            let classes = 'player-seat';
+            if (isActive) classes += ' active-turn';
+            if (isFolded) classes += ' folded';
+            if (isAllIn) classes += ' all-in';
+
+            const badges = [];
+            if (player.is_dealer) badges.push('<span class="badge badge-dealer">D</span>');
+            if (player.is_small_blind) badges.push('<span class="badge badge-sb">SB</span>');
+            if (player.is_big_blind) badges.push('<span class="badge badge-bb">BB</span>');
+
+            return `
+                <div class="${classes}">
+                    <div class="player-name">${player.username}</div>
+                    <div class="player-chips">💰 ${player.chips}</div>
+                    ${player.current_bet > 0 ? `<div class="player-bet">Bet: ${player.current_bet}</div>` : ''}
+                    ${player.last_action ? `<div class="player-action">${player.last_action}</div>` : ''}
+                    ${badges.length > 0 ? `<div class="player-badges">${badges.join('')}</div>` : ''}
+                </div>
+            `;
+        }
+
+        function updateLeaderboard(gameState) {
+            const players = Object.values(gameState.players || {})
+                .filter(p => p.chips > 0)
+                .sort((a, b) => b.chips - a.chips);
+
+            const container = document.getElementById('leaderboard');
+
+            if (players.length === 0) {
+                container.innerHTML = '<p style="opacity: 0.5; text-align: center;">No active players</p>';
+                return;
+            }
+
+            container.innerHTML = players.map((player, index) => {
+                const positionClass = index === 0 ? 'position-1' : 
+                                     index === 1 ? 'position-2' : 
+                                     index === 2 ? 'position-3' : 'position-other';
+                return `
+                    <div class="leaderboard-item">
+                        <div class="leaderboard-position ${positionClass}">${index + 1}</div>
+                        <div class="leaderboard-info">
+                            <div class="leaderboard-name">${player.username}</div>
+                        </div>
+                        <div class="leaderboard-chips">${player.chips}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function addActionToFeed(action) {
+            const feed = document.getElementById('actionFeed');
+            const actionClass = action.isWin ? 'win' : 
+                               (action.action || '').toLowerCase().includes('fold') ? 'fold' :
+                               (action.action || '').toLowerCase().includes('bet') ? 'bet' :
+                               (action.action || '').toLowerCase().includes('raise') ? 'raise' :
+                               (action.action || '').toLowerCase().includes('call') ? 'call' : '';
+
+            const time = new Date().toLocaleTimeString();
+            
+            const html = `
+                <div class="action-item ${actionClass}">
+                    <strong>${action.username || 'Unknown'}</strong> ${action.action}
+                    ${action.amount ? `(${action.amount})` : ''}
+                    <div class="action-time">${time}</div>
+                </div>
+            `;
+
+            feed.insertAdjacentHTML('afterbegin', html);
+
+            // Keep only last 50 actions
+            while (feed.children.length > 50) {
+                feed.removeChild(feed.lastChild);
+            }
+        }
+
+        function addElimination(data) {
+            if (data.eliminated) {
+                data.eliminated.forEach(username => {
+                    renderEliminations([{ username: username }]);
+                });
+            }
+        }
+
+        function renderEliminations(eliminations) {
+            const container = document.getElementById('eliminations');
+            
+            if (!eliminations || eliminations.length === 0) {
+                return;
+            }
+
+            // Clear placeholder if exists
+            if (container.querySelector('p')) {
+                container.innerHTML = '';
+            }
+
+            eliminations.forEach(elim => {
+                const html = `
+                    <div class="elimination-item">
+                        <span>💀 ${elim.username}</span>
+                        <span>#${elim.position || '?'}</span>
+                    </div>
+                `;
+                container.insertAdjacentHTML('afterbegin', html);
+            });
+        }
+
+        function showWinner(data) {
+            if (!data.winner) return;
+
+            document.getElementById('winnerName').textContent = data.winner.username;
+            document.getElementById('winnerChips').textContent = `Final Chips: ${data.winner.chips}`;
+            document.getElementById('winnerOverlay').classList.add('show');
+        }
+
+        function closeWinnerOverlay() {
+            document.getElementById('winnerOverlay').classList.remove('show');
+        }
+
+        function showAdminMessage(message) {
+            addActionToFeed({
+                username: '📢 Admin',
+                action: message,
+                isWin: false
+            });
+        }
+
+        // Initial data fetch
+        async function fetchInitialData() {
+            try {
+                const [statusRes, tablesRes, leaderboardRes] = await Promise.all([
+                    fetch('/viewer/status'),
+                    fetch('/viewer/tables'),
+                    fetch('/viewer/leaderboard')
+                ]);
+
+                const status = await statusRes.json();
+                const tables = await tablesRes.json();
+                const leaderboard = await leaderboardRes.json();
+
+                updateTournamentInfo(status);
+                renderTables(tables.tables);
+                
+                if (leaderboard.eliminations) {
+                    renderEliminations(leaderboard.eliminations);
+                }
+            } catch (err) {
+                console.error('Failed to fetch initial data:', err);
+            }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchInitialData();
+            connectWebSocket();
+
+            // Periodic refresh as backup
+            setInterval(fetchInitialData, 30000);
+        });
+    </script>
+</body>
+</html>

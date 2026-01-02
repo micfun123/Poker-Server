@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tournament Admin Panel</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            color: #fff;
+        }
+        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+        
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        header h1 { font-size: 1.8rem; }
+        
+        .status-badge {
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .status-registration { background: #3498db; }
+        .status-running { background: #27ae60; }
+        .status-paused { background: #f39c12; }
+        .status-finished { background: #e74c3c; }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .card {
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+        }
+        .card h2 {
+            font-size: 1.2rem;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+        }
+        
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+        .stat-item {
+            text-align: center;
+            padding: 15px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 8px;
+        }
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #3498db;
+        }
+        .stat-label { font-size: 0.8rem; opacity: 0.7; }
+        
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+            margin: 5px;
+            transition: transform 0.2s, opacity 0.2s;
+        }
+        .btn:hover { transform: translateY(-2px); opacity: 0.9; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        
+        .btn-primary { background: #3498db; color: white; }
+        .btn-success { background: #27ae60; color: white; }
+        .btn-warning { background: #f39c12; color: white; }
+        .btn-danger { background: #e74c3c; color: white; }
+        
+        .player-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .player-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            margin: 5px 0;
+            background: rgba(255,255,255,0.05);
+            border-radius: 5px;
+        }
+        .player-item.connected { border-left: 3px solid #27ae60; }
+        .player-item.disconnected { border-left: 3px solid #e74c3c; }
+        
+        .table-view {
+            background: #1e5631;
+            border-radius: 100px;
+            padding: 30px;
+            margin: 10px 0;
+            position: relative;
+        }
+        .table-center {
+            text-align: center;
+            padding: 20px;
+        }
+        .community-cards {
+            display: flex;
+            justify-content: center;
+            gap: 5px;
+            margin: 10px 0;
+        }
+        .card-display {
+            width: 40px;
+            height: 56px;
+            background: white;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+        .card-display.hearts, .card-display.diamonds { color: #e74c3c; }
+        .card-display.clubs, .card-display.spades { color: #2c3e50; }
+        
+        .log-container {
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 0.85rem;
+            background: rgba(0,0,0,0.3);
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .log-entry { padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        
+        .login-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        .login-box {
+            background: #16213e;
+            padding: 40px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        .login-box input {
+            padding: 10px;
+            margin: 10px 0;
+            border: none;
+            border-radius: 5px;
+            width: 200px;
+        }
+    </style>
+</head>
+<body>
+    <div id="loginOverlay" class="login-overlay">
+        <div class="login-box">
+            <h2>🔐 Admin Login</h2>
+            <p style="margin: 15px 0; opacity: 0.7;">Enter admin password</p>
+            <input type="password" id="adminPassword" placeholder="Password">
+            <br>
+            <button class="btn btn-primary" onclick="login()">Login</button>
+            <p id="loginError" style="color: #e74c3c; margin-top: 10px;"></p>
+        </div>
+    </div>
+
+    <div class="container">
+        <header>
+            <h1>🎰 Tournament Admin Panel</h1>
+            <span id="statusBadge" class="status-badge status-registration">Loading...</span>
+        </header>
+
+        <div class="grid">
+            <div class="card">
+                <h2>📊 Tournament Stats</h2>
+                <div class="stat-grid">
+                    <div class="stat-item">
+                        <div class="stat-value" id="playerCount">0</div>
+                        <div class="stat-label">Registered</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="remainingCount">0</div>
+                        <div class="stat-label">Remaining</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="tableCount">0</div>
+                        <div class="stat-label">Tables</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="handsPlayed">0</div>
+                        <div class="stat-label">Hands</div>
+                    </div>
+                </div>
+                <div style="margin-top: 15px; text-align: center;">
+                    <p>Blinds: <span id="blinds">10/20</span> (Level <span id="blindLevel">1</span>)</p>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>🎮 Controls</h2>
+                <div style="text-align: center;">
+                    <button class="btn btn-success" id="btnStart" onclick="startTournament()">Start Tournament</button>
+                    <button class="btn btn-warning" id="btnPause" onclick="pauseTournament()" disabled>Pause</button>
+                    <button class="btn btn-primary" id="btnResume" onclick="resumeTournament()" disabled>Resume</button>
+                    <button class="btn btn-danger" id="btnReset" onclick="resetTournament()">Reset</button>
+                </div>
+                <hr style="margin: 20px 0; opacity: 0.2;">
+                <div style="text-align: center;">
+                    <input type="text" id="broadcastMessage" placeholder="Broadcast message..." style="padding: 8px; width: 70%; border-radius: 5px; border: none;">
+                    <button class="btn btn-primary" onclick="broadcast()">Send</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid">
+            <div class="card">
+                <h2>👥 Players (<span id="connectedCount">0</span> connected)</h2>
+                <div class="player-list" id="playerList">
+                    <p style="opacity: 0.5;">No players registered</p>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>📋 Activity Log</h2>
+                <div class="log-container" id="activityLog">
+                    <div class="log-entry">Waiting for activity...</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>🎴 Active Tables</h2>
+            <div id="tablesContainer">
+                <p style="opacity: 0.5; text-align: center;">No active tables</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let adminAuth = '';
+        let ws = null;
+
+        function login() {
+            const password = document.getElementById('adminPassword').value;
+            adminAuth = 'Basic ' + btoa('admin:' + password);
+            
+            fetch('/admin/status', {
+                headers: { 'Authorization': adminAuth }
+            })
+            .then(res => {
+                if (res.ok) {
+                    document.getElementById('loginOverlay').style.display = 'none';
+                    initDashboard();
+                } else {
+                    document.getElementById('loginError').textContent = 'Invalid password';
+                }
+            })
+            .catch(err => {
+                document.getElementById('loginError').textContent = 'Connection error';
+            });
+        }
+
+        document.getElementById('adminPassword').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') login();
+        });
+
+        function initDashboard() {
+            refreshStatus();
+            refreshPlayers();
+            refreshTables();
+            connectWebSocket();
+            setInterval(refreshStatus, 5000);
+            setInterval(refreshPlayers, 10000);
+        }
+
+        function connectWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            ws = new WebSocket(`${protocol}//${window.location.host}/admin/ws`);
+            
+            ws.onmessage = (event) => {
+                const msg = JSON.parse(event.data);
+                handleWebSocketMessage(msg);
+            };
+            
+            ws.onclose = () => {
+                setTimeout(connectWebSocket, 3000);
+            };
+        }
+
+        function handleWebSocketMessage(msg) {
+            if (msg.type === 'game_state') {
+                refreshTables();
+                addLogEntry(`Game update: ${msg.data.betting_round || 'unknown'}`);
+            } else if (msg.type === 'status') {
+                updateStatus(msg.data);
+            }
+        }
+
+        function addLogEntry(text) {
+            const log = document.getElementById('activityLog');
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${text}`;
+            log.insertBefore(entry, log.firstChild);
+            if (log.children.length > 50) log.removeChild(log.lastChild);
+        }
+
+        async function refreshStatus() {
+            try {
+                const res = await fetch('/admin/status', {
+                    headers: { 'Authorization': adminAuth }
+                });
+                const data = await res.json();
+                updateStatus(data);
+            } catch (err) {
+                console.error('Failed to refresh status:', err);
+            }
+        }
+
+        function updateStatus(data) {
+            document.getElementById('playerCount').textContent = data.registered_players;
+            document.getElementById('remainingCount').textContent = data.remaining_players;
+            document.getElementById('tableCount').textContent = data.active_tables;
+            document.getElementById('handsPlayed').textContent = data.hands_played;
+            document.getElementById('blinds').textContent = `${data.current_blinds.small}/${data.current_blinds.big}`;
+            document.getElementById('blindLevel').textContent = data.current_blinds.level;
+
+            const badge = document.getElementById('statusBadge');
+            badge.textContent = data.status.toUpperCase();
+            badge.className = `status-badge status-${data.status}`;
+
+            // Update button states
+            const isRegistration = data.status === 'registration';
+            const isRunning = data.status === 'running';
+            const isPaused = data.status === 'paused';
+
+            document.getElementById('btnStart').disabled = !isRegistration;
+            document.getElementById('btnPause').disabled = !isRunning;
+            document.getElementById('btnResume').disabled = !isPaused;
+        }
+
+        async function refreshPlayers() {
+            try {
+                const res = await fetch('/admin/players', {
+                    headers: { 'Authorization': adminAuth }
+                });
+                const data = await res.json();
+                renderPlayers(data.players);
+            } catch (err) {
+                console.error('Failed to refresh players:', err);
+            }
+        }
+
+        function renderPlayers(players) {
+            const container = document.getElementById('playerList');
+            const connected = players.filter(p => p.connected).length;
+            document.getElementById('connectedCount').textContent = connected;
+
+            if (players.length === 0) {
+                container.innerHTML = '<p style="opacity: 0.5;">No players registered</p>';
+                return;
+            }
+
+            container.innerHTML = players.map(p => `
+                <div class="player-item ${p.connected ? 'connected' : 'disconnected'}">
+                    <div>
+                        <strong>${p.username}</strong>
+                        ${p.team_name ? `<span style="opacity: 0.7;"> (${p.team_name})</span>` : ''}
+                        ${p.chips !== undefined ? `<br><small>💰 ${p.chips} chips</small>` : ''}
+                    </div>
+                    <button class="btn btn-danger" style="padding: 5px 10px; font-size: 0.8rem;" 
+                            onclick="kickPlayer('${p.player_id}')">Kick</button>
+                </div>
+            `).join('');
+        }
+
+        async function refreshTables() {
+            try {
+                const res = await fetch('/admin/tables', {
+                    headers: { 'Authorization': adminAuth }
+                });
+                const data = await res.json();
+                renderTables(data.tables);
+            } catch (err) {
+                console.error('Failed to refresh tables:', err);
+            }
+        }
+
+        function renderTables(tables) {
+            const container = document.getElementById('tablesContainer');
+
+            if (tables.length === 0) {
+                container.innerHTML = '<p style="opacity: 0.5; text-align: center;">No active tables</p>';
+                return;
+            }
+
+            container.innerHTML = tables.map(table => `
+                <div class="table-view">
+                    <div class="table-center">
+                        <h3>${table.table_id} - Hand #${table.hand_number}</h3>
+                        <p>Round: ${table.betting_round} | Pot: ${table.total_pot}</p>
+                        <div class="community-cards">
+                            ${table.community_cards.map(c => `
+                                <div class="card-display ${c.suit === 'h' ? 'hearts' : c.suit === 'd' ? 'diamonds' : c.suit === 'c' ? 'clubs' : 'spades'}">
+                                    ${c.rank}${c.suit === 'h' ? '♥' : c.suit === 'd' ? '♦' : c.suit === 'c' ? '♣' : '♠'}
+                                </div>
+                            `).join('')}
+                            ${Array(5 - table.community_cards.length).fill('<div class="card-display" style="background: #333; color: #666;">?</div>').join('')}
+                        </div>
+                        <div style="margin-top: 15px;">
+                            ${Object.values(table.players).map(p => `
+                                <span style="margin: 5px; padding: 5px 10px; background: ${p.player_id === table.current_player_id ? '#27ae60' : 'rgba(255,255,255,0.1)'}; border-radius: 5px;">
+                                    ${p.username}: ${p.chips} ${p.status !== 'active' ? `(${p.status})` : ''}
+                                </span>
+                            `).join('')}
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function startTournament() {
+            if (!confirm('Start the tournament?')) return;
+            const res = await fetch('/admin/start', {
+                method: 'POST',
+                headers: { 'Authorization': adminAuth }
+            });
+            const data = await res.json();
+            alert(data.message);
+            refreshStatus();
+            refreshTables();
+        }
+
+        async function pauseTournament() {
+            const res = await fetch('/admin/pause', {
+                method: 'POST',
+                headers: { 'Authorization': adminAuth }
+            });
+            const data = await res.json();
+            addLogEntry(data.message);
+            refreshStatus();
+        }
+
+        async function resumeTournament() {
+            const res = await fetch('/admin/resume', {
+                method: 'POST',
+                headers: { 'Authorization': adminAuth }
+            });
+            const data = await res.json();
+            addLogEntry(data.message);
+            refreshStatus();
+        }
+
+        async function resetTournament() {
+            if (!confirm('Reset tournament? This will clear all game progress.')) return;
+            const res = await fetch('/admin/reset', {
+                method: 'POST',
+                headers: { 'Authorization': adminAuth }
+            });
+            const data = await res.json();
+            alert(data.message);
+            refreshStatus();
+            refreshTables();
+        }
+
+        async function kickPlayer(playerId) {
+            if (!confirm('Kick this player?')) return;
+            const res = await fetch(`/admin/kick/${playerId}?reason=Admin decision`, {
+                method: 'POST',
+                headers: { 'Authorization': adminAuth }
+            });
+            const data = await res.json();
+            addLogEntry(data.message);
+            refreshPlayers();
+        }
+
+        async function broadcast() {
+            const message = document.getElementById('broadcastMessage').value;
+            if (!message) return;
+            const res = await fetch('/admin/broadcast?message=' + encodeURIComponent(message), {
+                method: 'POST',
+                headers: { 'Authorization': adminAuth }
+            });
+            document.getElementById('broadcastMessage').value = '';
+            addLogEntry(`Broadcast: ${message}`);
+        }
+    </script>
+</body>
+</html>
