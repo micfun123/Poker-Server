@@ -1,4 +1,4 @@
-# 🃏 University Poker Bot Tournament
+# University Poker Bot Tournament
 
 A complete backend system for hosting poker bot competitions where students write their own bots to compete.
 
