@@ -19,7 +19,7 @@ class ServerSettings(BaseModel):
     """Server configuration"""
     host: str = "0.0.0.0"
     port: int = 8000
-    debug: bool = True
+    debug: bool = False
     admin_password: str = os.getenv("ADMIN_PASSWORD", "admin123")
 
 # Global settings instances
